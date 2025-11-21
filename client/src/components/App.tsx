@@ -1,35 +1,37 @@
-import {createBrowserRouter, RouterProvider} from "react-router";
-import Home from "@components/Home.tsx";
-import {DevTools} from "jotai-devtools";
-import 'jotai-devtools/styles.css'
-import {Toaster} from "react-hot-toast";
-import Auth from "@components/routes/auth/Auth.tsx";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { DevTools } from "jotai-devtools";
+import "jotai-devtools/styles.css";
+import { Toaster } from "react-hot-toast";
 
-function App() {
+function Dashboard() {
     return (
-        <>
-            <RouterProvider router={createBrowserRouter([
-                {
-                    path: '',
-                    element: <Home/>,
-                    children: [
-                        {
-                            path: '',
-                            element: <Auth />,
-                            index: true
-                        },
-                    //     here you can just make more components: i just have a a single auth page with a quick crud test
-                        
-                    ]
-                }
-            ])}/>
-            <DevTools/>
-            <Toaster
-                position="top-center"
-                reverseOrder={false}
-            />
-        </>
-    )
+        <div style={{ padding: 24 }}>
+            <h1>Jerne IF – Dead Pigeons</h1>
+            <p>Welcome! Build your pages here.</p>
+        </div>
+    );
 }
 
-export default App
+function NotFound() {
+    return (
+        <div style={{ padding: 24 }}>
+            <h2>404</h2>
+            <p>Page not found.</p>
+        </div>
+    );
+}
+
+const router = createBrowserRouter([
+    { path: "/", element: <Dashboard /> },
+    { path: "*", element: <NotFound /> },
+]);
+
+export default function App() {
+    return (
+        <>
+            <RouterProvider router={router} />
+            <DevTools />
+            <Toaster position="top-center" reverseOrder={false} />
+        </>
+    );
+}

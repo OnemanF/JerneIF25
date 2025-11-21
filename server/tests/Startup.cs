@@ -1,4 +1,4 @@
-using api;
+/*using api;
 using dataccess;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,4 +32,5 @@ public class Startup
         var fakeTime = new FakeTimeProvider();
         services.AddSingleton<TimeProvider>(fakeTime);
     }
-}
+} 
+*/

@@ -22,14 +22,17 @@
     "react-dom": "^19.1.0",
     "react-hot-toast": "^2.6.0",
     "react-router": "^7.9.1",
+    "react-router-dom": "^7.9.6",
     "tailwindcss": "^4.1.13",
     "ts-sieve-query-builder": "0.2.3"
   },
   "devDependencies": {
+    "@types/node": "^24.10.1",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.4.1",
     "dependency-cruiser": "^17.2.0",
+    "esbuild": "0.25.12",
     "globals": "^16.0.0",
     "typescript": "^5.9.3",
     "vite": "^6.3.5"

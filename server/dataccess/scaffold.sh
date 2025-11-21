@@ -1,1 +1,12 @@
-dotnet tool install -g dotnet-ef && dotnet ef dbcontext scaffold " Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Password=postgres" Npgsql.EntityFrameworkCore.PostgreSQL   --context MyDbContext     --no-onconfiguring        --schema library   --force
+#!/bin/bash
+set -a
+source .env 
+set a+ 
+
+dotnet tool run dotnet-ef dbcontext scaffold \
+"$CONN_STR" \
+Npgsql.EntityFrameworkCore.PostgreSQL \
+ --context ApplicationDbContext --context-dir . \
+ --output-dir Entities \
+ --namespace JerneIF25.DataAccess.Entities \
+ --use-database-names --no-onconfiguring --force

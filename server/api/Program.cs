@@ -1,9 +1,9 @@
 using System.Text.Json.Serialization;
 using api.Etc;
-using api.Services;
-using Scalar.AspNetCore;
+using Microsoft.Extensions.Options;
 using Sieve.Models;
 using Sieve.Services;
+using Scalar.AspNetCore;
 
 namespace api;
 
@@ -12,47 +12,64 @@ public class Program
     public static void ConfigureServices(IServiceCollection services)
     {
         services.AddSingleton(TimeProvider.System);
+
+        // Your own helpers
         services.InjectAppOptions();
         services.AddMyDbContext();
+
+        // MVC + JSON
         services.AddControllers().AddJsonOptions(opts =>
         {
             opts.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve;
             opts.JsonSerializerOptions.MaxDepth = 128;
         });
-        services.AddOpenApiDocument(config => { config.AddStringConstants(typeof(SieveConstants)); });
+
+        // OpenAPI/Swagger (NSwag)
+        services.AddOpenApiDocument(); // <-- remove AddStringConstants; you don’t have that extension
+
+        // CORS / exception handling
         services.AddCors();
-        services.AddScoped<ILibraryService, LibraryService>();
-        services.AddScoped<IAuthService, AuthService>();
-        services.AddScoped<ISeeder, SieveTestSeeder>();
         services.AddExceptionHandler<GlobalExceptionHandler>();
-        services.Configure<SieveOptions>(options =>
+
+        // --- Sieve (v3 beta) minimal registration ---
+        services.AddOptions<SieveOptions>().Configure(o =>
         {
-            options.CaseSensitive = false;
-            options.DefaultPageSize = 10;
-            options.MaxPageSize = 100;
+            o.CaseSensitive = false;
+            o.DefaultPageSize = 10;
+            o.MaxPageSize = 100;
         });
-        services.AddScoped<ISieveProcessor, ApplicationSieveProcessor>();
+        services.AddScoped<ISieveCustomFilterMethods, SieveNoopFilters>(); // only filters
+        services.AddScoped<ISieveProcessor, SieveProcessor>();             // use built-in processor
+        // ------------------------------------------------
     }
 
     public static void Main()
     {
         var builder = WebApplication.CreateBuilder();
-
         ConfigureServices(builder.Services);
+
         var app = builder.Build();
-        app.UseExceptionHandler(config => { });
+
+        app.UseExceptionHandler(_ => { });
+
+        // Swagger/NSwag UI (must be AFTER build, not inside ConfigureServices)
         app.UseOpenApi();
         app.UseSwaggerUi();
-        app.MapScalarApiReference(options => options.OpenApiRoutePattern = "/swagger/v1/swagger.json"
-        );
-        app.UseCors(config => config.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin().SetIsOriginAllowed(x => true));
+
+        // Scalar optional (if you use it)
+        app.MapScalarApiReference(o => o.OpenApiRoutePattern = "/swagger/v1/swagger.json");
+
+        app.UseCors(c => c
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowAnyOrigin()
+            .SetIsOriginAllowed(_ => true));
+
         app.MapControllers();
-        app.GenerateApiClientsFromOpenApi("/../../client/src/core/generated-client.ts").GetAwaiter().GetResult();
-        if (app.Environment.IsDevelopment())
-            using (var scope = app.Services.CreateScope())
-            {
-                scope.ServiceProvider.GetRequiredService<ISeeder>().Seed().GetAwaiter().GetResult();
-            }
+
+        // If you don’t have a real implementation yet, stub ISeeder or remove this block
+        // using (var scope = app.Services.CreateScope())
+        //     await scope.ServiceProvider.GetRequiredService<ISeeder>().Seed();
 
         app.Run();
     }

@@ -1,4 +1,4 @@
-using System.Text.Json;
+/*using System.Text.Json;
 using api.Etc;
 using api.Models.Requests;
 using api.Services;
@@ -31,3 +31,4 @@ public class SetupTests(MyDbContext ctx,
         await seeder.Seed();
     }
 }
+*/

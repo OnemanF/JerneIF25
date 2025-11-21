@@ -1,22 +1,20 @@
+// server/api/Etc/GlobalExceptionHandler.cs
+using System.Net;
 using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
 
 namespace api.Etc;
 
-public class GlobalExceptionHandler : IExceptionHandler
+/// <summary>Very small exception handler to satisfy Program.cs.</summary>
+public sealed class GlobalExceptionHandler : IExceptionHandler
 {
-    public async ValueTask<bool> TryHandleAsync(
-        HttpContext httpContext,
-        Exception exception,
-        CancellationToken cancellationToken)
+    public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken token)
     {
-        var problemDetails = new ProblemDetails
+        httpContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+        await httpContext.Response.WriteAsJsonAsync(new
         {
-            Title = exception.Message
-        };
-
-        await httpContext.Response.WriteAsJsonAsync(problemDetails);
-
+            error = "Unhandled",
+            message = exception.Message
+        }, cancellationToken: token);
         return true;
     }
 }

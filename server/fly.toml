@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for projectsolutionserver on 2025-09-15T10:06:35+02:00
+# fly.toml app configuration file generated for jerneif25b on 2025-11-19T20:18:11+01:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'projectsolutionserver'
+app = 'jerneif25b'
 primary_region = 'fra'
 
 [build]

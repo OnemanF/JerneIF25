@@ -1,0 +1,75 @@
+﻿
+.auth-wrap {
+    min-height: calc(100vh - 80px);
+    display: grid; place-items: center;
+    padding: 32px 16px;
+    background:
+            radial-gradient(900px 200px at 50% -60px, rgba(255,214,105,0.10), rgba(255,214,105,0) 60%),
+            #090d19;
+}
+.auth-card {
+    width: min(520px, 94vw);
+    background: rgba(14,19,36,0.95);
+    color: #e9eef8;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+    padding: 28px;
+    
+    --content-w: 460px;
+}
+
+/* Titles */
+.auth-title { font-size: 28px; font-weight: 800; margin: 0 0 6px 0; }
+.auth-subtitle { opacity: .85; margin: 0 0 18px 0; }
+
+.auth-form {
+    display: grid;
+    gap: 14px;
+    max-width: var(--content-w);   
+    margin: 0;                    
+}
+
+/* Inputs */
+.field { display: grid; gap: 6px; }
+.input {
+    width: 100%;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+    color: #e9eef8;
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+.input:focus {
+    border-color: rgba(240,188,35,0.8);
+    box-shadow: 0 0 0 3px rgba(240,188,35,0.18);
+}
+
+/* Buttons */
+.btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 12px 14px; border-radius: 10px; font-weight: 700;
+    border: 1px solid transparent; cursor: pointer; text-decoration: none; color: inherit;
+}
+.btn--full { width: 100%; } /* fills the form column */
+.btn--primary {
+    background: linear-gradient(180deg, #efb63a, #d09a21);
+    color: #2b1d00;
+    border: none;
+    box-shadow: 0 8px 20px rgba(240,188,35,0.22);
+}
+.btn--ghost { background: transparent; border-color: rgba(255,255,255,0.25); }
+
+/* Divider also uses the same column */
+.auth-divider {
+    height: 1px; width: 100%;
+    background: rgba(255,255,255,0.08);
+    margin: 16px 0;
+    max-width: var(--content-w);
+}
+
+/* Mobile */
+@media (max-width: 420px) {
+    .auth-card { padding: 20px; --content-w: 100%; } 
+    .auth-title { font-size: 24px; }
+}

@@ -1,37 +1,19 @@
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import { DevTools } from "jotai-devtools";
-import "jotai-devtools/styles.css";
-import { Toaster } from "react-hot-toast";
-
-function Dashboard() {
-    return (
-        <div style={{ padding: 24 }}>
-            <h1>Jerne IF – Dead Pigeons</h1>
-            <p>Welcome! Build your pages here.</p>
-        </div>
-    );
-}
-
-function NotFound() {
-    return (
-        <div style={{ padding: 24 }}>
-            <h2>404</h2>
-            <p>Page not found.</p>
-        </div>
-    );
-}
-
-const router = createBrowserRouter([
-    { path: "/", element: <Dashboard /> },
-    { path: "*", element: <NotFound /> },
-]);
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Navbar from "./Navbar";
+import Login from "./Login";
+import Play from "./Play";
+import AdminDashboard from "./admin/AdminDashboard";
 
 export default function App() {
     return (
-        <>
-            <RouterProvider router={router} />
-            <DevTools />
-            <Toaster position="top-center" reverseOrder={false} />
-        </>
+        <BrowserRouter>
+            <Navbar />
+            <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/Play" element={<Play />} />
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="*" element={<Navigate to="/Play" replace />} />
+            </Routes>
+        </BrowserRouter>
     );
 }

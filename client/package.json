@@ -4,6 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "gen:client:dev": "openapi --input http://localhost:5284/swagger/v1/swagger.json --output src/core/generated --client axios",
+    "gen:client:prod": "openapi --input https://jerneif25b.fly.dev/swagger/v1/swagger.json --output src/core/generated --client axios",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
@@ -18,8 +20,8 @@
     "dotnet-json-refs": "^1.0.0",
     "jotai": "^2.14.0",
     "jotai-devtools": "^0.13.0",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "react-hot-toast": "^2.6.0",
     "react-router": "^7.9.1",
     "react-router-dom": "^7.9.6",
@@ -28,12 +30,14 @@
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
-    "@types/react": "^19.1.2",
-    "@types/react-dom": "^19.1.2",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.4.1",
+    "axios": "^1.13.2",
     "dependency-cruiser": "^17.2.0",
     "esbuild": "0.25.12",
     "globals": "^16.0.0",
+    "openapi-typescript-codegen": "^0.29.0",
     "typescript": "^5.9.3",
     "vite": "^6.3.5"
   }

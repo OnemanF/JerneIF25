@@ -92,4 +92,11 @@ CREATE UNIQUE INDEX uq_tx_mobilepay_ref ON transactions(mobilepay_ref)
     WHERE mobilepay_ref IS NOT NULL AND is_deleted = FALSE;
 CREATE INDEX ix_tx_player_status ON transactions(player_id, status) WHERE is_deleted = FALSE;
 
+CREATE TABLE IF NOT EXISTS admins (
+                                      id            bigserial PRIMARY KEY,
+                                      email         varchar(255) NOT NULL UNIQUE,
+                                      password_hash text         NOT NULL,
+                                      created_at    timestamptz  NOT NULL DEFAULT now()
+);
+
 COMMIT;

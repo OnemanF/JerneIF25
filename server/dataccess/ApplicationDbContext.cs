@@ -13,6 +13,8 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<board> boards { get; set; }
 
+    public DbSet<Admin> admins { get; set; } = default!;
+    
     public virtual DbSet<board_subscription> board_subscriptions { get; set; }
 
     public virtual DbSet<game> games { get; set; }

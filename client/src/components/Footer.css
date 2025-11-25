@@ -1,0 +1,121 @@
+﻿.lotto-footer {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 50;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    backdrop-filter: blur(8px);
+    background:
+            radial-gradient(900px 160px at 50% 120%, rgba(255,214,105,0.06), rgba(255,214,105,0) 60%),
+            rgba(9,13,25,0.9);
+}
+
+.lotto-footer__inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    color: #e9eef8;
+    font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+.lotto-footer__left,
+.lotto-footer__right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: nowrap;       
+    min-width: 0;
+}
+
+.qty-ctrl { display: inline-flex; align-items: center; gap: 6px; }
+.qty-btn {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+    color: #e9eef8;
+    border-radius: 8px;
+    width: 34px; height: 34px;
+    cursor: pointer;
+}
+.qty-btn:disabled { opacity: .45; cursor: not-allowed; }
+.qty-input {
+    width: 64px; text-align: center;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+    color: #e9eef8; border-radius: 8px; padding: 6px 8px;
+}
+
+/* pager directly after qty */
+.nav { display: inline-flex; align-items: center; gap: 8px; margin-left: 8px; }
+.nav-btn {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+    color: #e9eef8;
+    border-radius: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+.nav-btn:disabled { opacity: .45; cursor: not-allowed; }
+.nav-indicator { white-space: nowrap; opacity: .9; }
+
+/* switch (clear on/off) */
+.switch { display: inline-flex; align-items: center; gap: 10px; }
+.switch input { position: absolute; opacity: 0; pointer-events: none; }
+.switch-track {
+    width: 46px; height: 26px; border-radius: 999px;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.2);
+    position: relative;
+    transition: background .15s ease, border-color .15s ease;
+}
+.switch-track::after {
+    content: "";
+    position: absolute; top: 50%; left: 4px;
+    width: 18px; height: 18px; border-radius: 999px;
+    background: #fff;
+    transform: translateY(-50%);
+    transition: left .15s ease, background-color .15s ease;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+}
+.switch input:checked + .switch-track {
+    background: rgba(240,188,35,0.55);
+    border-color: rgba(240,188,35,0.8);
+}
+.switch input:checked + .switch-track::after { left: 24px; }
+.switch-label { opacity: .95; }
+
+/* total */
+.total { opacity: .95; }
+
+/* right-side action cluster: saldo + buy */
+.actions { display: inline-flex; align-items: center; gap: 10px; }
+
+/* balance button */
+.balance-btn {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+    color: #e9eef8; border-radius: 10px; padding: 8px 12px;
+    cursor: pointer;
+}
+
+/* primary CTA */
+.primary {
+    background: linear-gradient(180deg, #efb63a, #d09a21);
+    color: #2b1d00;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(240,188,35,0.22);
+}
+.primary:disabled { opacity: .5; cursor: not-allowed; }
+
+/* responsive wrap on small screens */
+@media (max-width: 900px) {
+    .lotto-footer__inner { flex-direction: column; align-items: stretch; gap: 10px; }
+    .lotto-footer__left, .lotto-footer__right { flex-wrap: wrap; }
+    .actions { justify-content: flex-end; width: 100%; }
+}

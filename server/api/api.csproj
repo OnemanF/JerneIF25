@@ -7,15 +7,14 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <!-- Align with dataccess to remove version conflicts -->
+        <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.1" />
         <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.1" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.1" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.2" />
-        <PackageReference Include="NSwag.Generation.AspNetCore" Version="14.0.7" />
-
-        <!-- Your starter deps -->
+        
         <PackageReference Include="Sieve" Version="3.0.0-beta0013" />
-        <PackageReference Include="NSwag.AspNetCore" Version="14.0.7" />
+        <PackageReference Include="NSwag.AspNetCore" Version="14.6.2" />
         <PackageReference Include="Scalar.AspNetCore" Version="1.2.25" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
     </ItemGroup>

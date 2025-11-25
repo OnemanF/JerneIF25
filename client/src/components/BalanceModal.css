@@ -1,0 +1,80 @@
+﻿.modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.5);
+    backdrop-filter: blur(4px);
+    display: grid; place-items: center;
+    z-index: 1000;
+}
+.modal {
+    width: min(560px, 92vw);
+    background: #0e1324;
+    color: #e9eef8;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 14px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.45);
+    padding: 16px;
+}
+.modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px;
+}
+.modal-close {
+    background: transparent; border: 0; color: #e9eef8;
+    font-size: 22px; cursor: pointer; padding: 4px 8px;
+}
+
+/* balance line */
+.modal-balance {
+    margin: 8px 0 12px 0;
+}
+
+/* tabs */
+.tabs { display: inline-flex; gap: 8px; margin: 6px 0 12px 0; }
+.tab {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+    color: #e9eef8;
+    padding: 8px 12px; border-radius: 8px; cursor: pointer;
+}
+.tab--active {
+    background: rgba(240,188,35,0.25);
+    border-color: rgba(240,188,35,0.8);
+}
+
+/* form */
+.modal-body { display: grid; gap: 10px; }
+.field { display: grid; gap: 6px; }
+.field-input {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+    color: #e9eef8; border-radius: 8px; padding: 8px 10px;
+}
+
+/* quick chips */
+.quick { display: flex; align-items: center; gap: 8px; }
+.chip-btn {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+    color: #e9eef8; border-radius: 999px; padding: 6px 10px; cursor: pointer;
+}
+
+/* footer */
+.modal-footer {
+    display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px;
+}
+.ghost {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.25);
+    color: #e9eef8; border-radius: 10px; padding: 8px 12px; cursor: pointer;
+}
+.primary {
+    background: linear-gradient(180deg, #efb63a, #d09a21);
+    color: #2b1d00;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(240,188,35,0.22);
+}
+.primary:disabled { opacity: .5; cursor: not-allowed; }

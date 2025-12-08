@@ -1,9 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using JerneIF25.DataAccess.Entities;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sieve.Models;
 using Sieve.Services;
-using JerneIF25.DataAccess.Entities;
-using api.Models;
 
 namespace api.Controllers;
 
@@ -20,22 +20,28 @@ public class PlayersController : ControllerBase
         _sieve = sieve;
     }
 
+    public sealed record CreatePlayerDto(string Name, string? Phone, string? Email, bool? IsActive);
+    public sealed record UpdatePlayerDto(string Name, string? Phone, string? Email, bool IsActive, DateOnly? MemberExpiresAt);
+
     [HttpGet]
     public async Task<IActionResult> Get([FromQuery] SieveModel sieve)
     {
-        var q = _sieve.Apply(sieve, _db.players.AsNoTracking().Where(p => !p.is_deleted));
+        var q = _db.players.AsNoTracking().Where(p => !p.is_deleted);
+        q = _sieve.Apply(sieve, q);
         return Ok(await q.ToListAsync());
     }
 
     [HttpPost]
+    [Authorize(Roles = "admin")]
     public async Task<IActionResult> Create([FromBody] CreatePlayerDto dto)
     {
-        var p = new player
+        var p = new players
         {
             name = dto.Name,
             phone = dto.Phone,
             email = dto.Email,
-            is_active = false
+            is_active = dto.IsActive ?? false,
+            created_at = DateTime.UtcNow
         };
         _db.players.Add(p);
         await _db.SaveChangesAsync();
@@ -43,6 +49,7 @@ public class PlayersController : ControllerBase
     }
 
     [HttpPut("{id:long}")]
+    [Authorize(Roles = "admin")]
     public async Task<IActionResult> Update(long id, [FromBody] UpdatePlayerDto dto)
     {
         var p = await _db.players.FirstOrDefaultAsync(x => x.id == id && !x.is_deleted);
@@ -60,10 +67,12 @@ public class PlayersController : ControllerBase
     }
 
     [HttpDelete("{id:long}")]
+    [Authorize(Roles = "admin")]
     public async Task<IActionResult> SoftDelete(long id)
     {
         var p = await _db.players.FirstOrDefaultAsync(x => x.id == id && !x.is_deleted);
         if (p is null) return NotFound();
+
         p.is_deleted = true;
         p.updated_at = DateTime.UtcNow;
         await _db.SaveChangesAsync();

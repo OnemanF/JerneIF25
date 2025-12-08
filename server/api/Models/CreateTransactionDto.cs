@@ -2,4 +2,9 @@
 
 namespace api.Models;
 
-public record CreateTransactionDto(long PlayerId, decimal AmountDkk, string? MobilePayRef);
+public record CreateTransactionDto(
+    long PlayerId,
+    decimal AmountDkk,
+    string? MobilePayRef,
+    string? Note    
+);

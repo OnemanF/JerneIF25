@@ -11,21 +11,50 @@ public partial class ApplicationDbContext : DbContext
     {
     }
 
-    public virtual DbSet<board> boards { get; set; }
+    public virtual DbSet<admins> admins { get; set; }
 
-    public DbSet<Admin> admins { get; set; } = default!;
-    
-    public virtual DbSet<board_subscription> board_subscriptions { get; set; }
+    public virtual DbSet<board_subscriptions> board_subscriptions { get; set; }
 
-    public virtual DbSet<game> games { get; set; }
+    public virtual DbSet<boards> boards { get; set; }
 
-    public virtual DbSet<player> players { get; set; }
+    public virtual DbSet<games> games { get; set; }
 
-    public virtual DbSet<transaction> transactions { get; set; }
+    public virtual DbSet<player_credentials> player_credentials { get; set; }
+
+    public virtual DbSet<players> players { get; set; }
+
+    public virtual DbSet<transactions> transactions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<board>(entity =>
+        modelBuilder.Entity<admins>(entity =>
+        {
+            entity.HasKey(e => e.id).HasName("admins_pkey");
+
+            entity.HasIndex(e => e.email, "admins_email_key").IsUnique();
+
+            entity.Property(e => e.created_at).HasDefaultValueSql("now()");
+            entity.Property(e => e.email).HasMaxLength(255);
+        });
+
+        modelBuilder.Entity<board_subscriptions>(entity =>
+        {
+            entity.HasKey(e => e.id).HasName("board_subscriptions_pkey");
+
+            entity.HasIndex(e => new { e.player_id, e.is_active }, "ix_sub_player_active").HasFilter("(is_deleted = false)");
+
+            entity.Property(e => e.created_at).HasDefaultValueSql("now()");
+            entity.Property(e => e.is_active).HasDefaultValue(true);
+            entity.Property(e => e.is_deleted).HasDefaultValue(false);
+            entity.Property(e => e.started_at).HasDefaultValueSql("now()");
+
+            entity.HasOne(d => d.player).WithMany(p => p.board_subscriptions)
+                .HasForeignKey(d => d.player_id)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("board_subscriptions_player_id_fkey");
+        });
+
+        modelBuilder.Entity<boards>(entity =>
         {
             entity.HasKey(e => e.id).HasName("boards_pkey");
 
@@ -49,24 +78,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasConstraintName("boards_player_id_fkey");
         });
 
-        modelBuilder.Entity<board_subscription>(entity =>
-        {
-            entity.HasKey(e => e.id).HasName("board_subscriptions_pkey");
-
-            entity.HasIndex(e => new { e.player_id, e.is_active }, "ix_sub_player_active").HasFilter("(is_deleted = false)");
-
-            entity.Property(e => e.created_at).HasDefaultValueSql("now()");
-            entity.Property(e => e.is_active).HasDefaultValue(true);
-            entity.Property(e => e.is_deleted).HasDefaultValue(false);
-            entity.Property(e => e.started_at).HasDefaultValueSql("now()");
-
-            entity.HasOne(d => d.player).WithMany(p => p.board_subscriptions)
-                .HasForeignKey(d => d.player_id)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("board_subscriptions_player_id_fkey");
-        });
-
-        modelBuilder.Entity<game>(entity =>
+        modelBuilder.Entity<games>(entity =>
         {
             entity.HasKey(e => e.id).HasName("games_pkey");
 
@@ -81,7 +93,24 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("'inactive'::character varying");
         });
 
-        modelBuilder.Entity<player>(entity =>
+        modelBuilder.Entity<player_credentials>(entity =>
+        {
+            entity.HasKey(e => e.player_id).HasName("player_credentials_pkey");
+
+            entity.HasIndex(e => e.email, "ix_player_credentials_email");
+
+            entity.HasIndex(e => e.email, "player_credentials_email_key").IsUnique();
+
+            entity.Property(e => e.player_id).ValueGeneratedNever();
+            entity.Property(e => e.created_at).HasDefaultValueSql("now()");
+            entity.Property(e => e.email).HasMaxLength(255);
+
+            entity.HasOne(d => d.player).WithOne(p => p.player_credentials)
+                .HasForeignKey<player_credentials>(d => d.player_id)
+                .HasConstraintName("player_credentials_player_id_fkey");
+        });
+
+        modelBuilder.Entity<players>(entity =>
         {
             entity.HasKey(e => e.id).HasName("players_pkey");
 
@@ -95,7 +124,7 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.phone).HasMaxLength(50);
         });
 
-        modelBuilder.Entity<transaction>(entity =>
+        modelBuilder.Entity<transactions>(entity =>
         {
             entity.HasKey(e => e.id).HasName("transactions_pkey");
 

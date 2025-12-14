@@ -1,16 +1,13 @@
-name: ci
+name: CI
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [ master ]
   pull_request:
-
-permissions:
-  contents: read
+    branches: [ master ]
 
 jobs:
-  backend:
-    name: Build & Test (.NET + Testcontainers)
+  build_and_test:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,49 +17,19 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: |
-            9.0.x
+          dotnet-version: '9.0.x'
 
-      - name: Print Docker info (for Testcontainers)
-        run: |
-          docker --version
-          docker info
-
-      - name: NuGet cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
-          restore-keys: |
-            nuget-${{ runner.os }}-
-
-      - name: Restore
-        run: dotnet restore
-
+    
       - name: Build
-        run: dotnet build --configuration Release --no-restore
+        env:
+          AppOptions__JwtSecret: ${{ secrets.APP_JWT_SECRET }}
+          AppOptions__Db:       ${{ secrets.NEON_CONN_STRING }}
+        run: |
+          dotnet restore
+          dotnet build --configuration Release --no-restore
 
-      # Env here is only for CI test runtime; it won't leak anywhere else.
       - name: Test
         env:
-          ASPNETCORE_ENVIRONMENT: CI
-          AppOptions__JwtSecret: "this-is-a-ci-only-32+chars-secret-please-change"
-          DOTNET_EnableDiagnostics: 0
-          TESTCONTAINERS_RYUK_DISABLED: "false"
-          TESTCONTAINERS_KEEPCONTAINERS: "false"
-        run: |
-          # Adjust the path to your test project if different:
-          dotnet test tests/tests.csproj \
-            --configuration Release \
-            --no-build \
-            --logger "trx;LogFileName=test-results.trx" \
-            --collect:"XPlat Code Coverage"
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results-trx
-          path: |
-            **/TestResults/*.trx
-            **/TestResults/**/coverage.cobertura.xml
+          AppOptions__JwtSecret: ${{ secrets.APP_JWT_SECRET }}
+          AppOptions__Db:       ${{ secrets.NEON_CONN_STRING }}
+        run: dotnet test --no-build --verbosity normal

@@ -26,3 +26,6 @@ dist-ssr
 
 # IMPORTANT for smaller context:
 .git
+
+# Generated API client – do not commit
+client/src/core/

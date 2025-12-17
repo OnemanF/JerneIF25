@@ -19,17 +19,18 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
-    
+      - name: Restore
+        run: dotnet restore
+
       - name: Build
         env:
           AppOptions__JwtSecret: ${{ secrets.APP_JWT_SECRET }}
           AppOptions__Db:       ${{ secrets.NEON_CONN_STRING }}
-        run: |
-          dotnet restore
-          dotnet build --configuration Release --no-restore
+        run: dotnet build --configuration Release --no-restore
 
       - name: Test
         env:
           AppOptions__JwtSecret: ${{ secrets.APP_JWT_SECRET }}
           AppOptions__Db:       ${{ secrets.NEON_CONN_STRING }}
-        run: dotnet test --no-build --verbosity normal
+          DOTNET_ROLL_FORWARD: Major
+        run: dotnet test --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"

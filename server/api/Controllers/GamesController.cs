@@ -55,21 +55,12 @@ public class GamesController : ControllerBase
 
         return Ok(rows);
     }
-    //admin
+    
     public sealed record BoardRowDto(
-        long Id,
-        long PlayerId,
-        string PlayerName,
-        decimal PriceDkk,
-        short[] Numbers,     
-        bool IsWinner
+        long Id, long PlayerId, string PlayerName, decimal PriceDkk, short[] Numbers, bool IsWinner
     );
-
     public sealed record GameBoardsResponse(
-        long GameId,
-        int WinnersTotal,
-        int BoardsTotal,
-        IEnumerable<BoardRowDto> Boards
+        long GameId, int WinnersTotal, int BoardsTotal, IEnumerable<BoardRowDto> Boards
     );
     
     [HttpGet("{id:long}/boards")]
@@ -91,7 +82,7 @@ public class GamesController : ControllerBase
             {
                 x.b.id,
                 x.b.price_dkk,
-                Numbers = x.b.numbers, // List<short> in DB
+                Numbers = x.b.numbers,
                 PlayerId = x.p.id,
                 PlayerName = x.p.name
             })
@@ -100,19 +91,16 @@ public class GamesController : ControllerBase
         bool IsWinner(IEnumerable<short> nums) => win.Length == 3 && win.All(n => nums.Contains(n));
 
         var mapped = rows.Select(r => new BoardRowDto(
-            Id: r.id,
-            PlayerId: r.PlayerId,
-            PlayerName: r.PlayerName,
-            PriceDkk: r.price_dkk,
-            Numbers: (r.Numbers ?? new List<short>()).ToArray(),
-            IsWinner: IsWinner(r.Numbers ?? new List<short>())
+            r.id, r.PlayerId, r.PlayerName, r.price_dkk,
+            (r.Numbers ?? new List<short>()).ToArray(),
+            IsWinner(r.Numbers ?? new List<short>())
         )).ToList();
 
         var resp = new GameBoardsResponse(
-            GameId: id,
-            WinnersTotal: mapped.Count(x => x.IsWinner),
-            BoardsTotal: mapped.Count,
-            Boards: mapped
+            id,
+            mapped.Count(x => x.IsWinner),
+            mapped.Count,
+            mapped
         );
 
         return Ok(resp);
@@ -230,24 +218,26 @@ public class GamesController : ControllerBase
         g.status       = "closed";
         g.published_at = DateTime.UtcNow;
         g.updated_at   = DateTime.UtcNow;
-
+        
         var nextWs = NextWeek(g.week_start);
-        var next = await _db.games.FirstOrDefaultAsync(x => x.week_start == nextWs && !x.is_deleted);
+        var nextAny = await _db.games.FirstOrDefaultAsync(x => x.week_start == nextWs);
 
-        if (next is null)
+        if (nextAny is null)
         {
-            next = new games
+            nextAny = new games
             {
                 week_start = nextWs,
                 status     = "active",
-                created_at = DateTime.UtcNow
+                created_at = DateTime.UtcNow,
+                is_deleted = false
             };
-            _db.games.Add(next);
+            _db.games.Add(nextAny);
         }
         else
         {
-            next.status     = "active";
-            next.updated_at = DateTime.UtcNow;
+            nextAny.is_deleted = false;
+            nextAny.status     = "active";
+            nextAny.updated_at = DateTime.UtcNow;
         }
 
         await _db.SaveChangesAsync();
@@ -300,7 +290,7 @@ public class GamesController : ControllerBase
         if (closed is null) return BadRequest("Ingen lukket uge at fortryde.");
         
         var nextWs = NextWeek(closed.week_start);
-        var next = await _db.games.FirstOrDefaultAsync(g => g.week_start == nextWs && !g.is_deleted);
+        var next = await _db.games.FirstOrDefaultAsync(g => g.week_start == nextWs);
         
         if (next is not null && await _db.boards.AnyAsync(b => !b.is_deleted && b.game_id == next.id))
             return BadRequest("Næste uge har allerede køb – fortryd ikke muligt.");
@@ -311,7 +301,8 @@ public class GamesController : ControllerBase
         {
             if (next is not null && currentActive.id == next.id)
             {
-                next.is_deleted = true;
+                next.is_deleted = false;
+                next.status     = "inactive";
                 next.updated_at = DateTime.UtcNow;
             }
             else
@@ -322,11 +313,10 @@ public class GamesController : ControllerBase
 
             await _db.SaveChangesAsync();
         }
-
-        // Re-open the closed week
+        
         closed.status       = "active";
         closed.published_at = null;
-        closed.winning_nums = null;  
+        closed.winning_nums = null; 
         closed.updated_at   = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();

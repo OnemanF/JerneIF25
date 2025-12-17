@@ -5,5 +5,5 @@ namespace api.Models;
 public class AppOptions
 {
     [Required] [MinLength(1)] public string Db { get; set; } = null!;
-    [Required] [MinLength(1)] public string JwtSecret { get; set; } = "pinsnjvfqporvrsvsrvrsvghtnjdncjnsklionmvoisvcrsoiuvnrisvpomvs";
+    [Required] [MinLength(1)] public string JwtSecret { get; set; } = "${{ secrets.NEON_CONN_STRING }}";
 }

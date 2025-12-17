@@ -53,7 +53,7 @@ type BoardRow = {
     playerId: number;
     playerName: string;
     priceDkk: number;
-    numbers: number[];    
+    numbers: number[];
     isWinner: boolean;
 };
 type GameBoardsResponse = {
@@ -103,11 +103,11 @@ export default function AdminDashboard() {
     const now = new Date();
     const [currentWeek, setCurrentWeek] = useState(getISOWeek(now));
     const [currentYear, setCurrentYear] = useState(now.getFullYear());
-
+    
     const [picks, setPicks] = useState<number[]>([]);
-
+    
     const booted = useRef(false);
-
+    
     const [openGameId, setOpenGameId] = useState<number | null>(null);
     const [boardSheets, setBoardSheets] = useState<Record<number, GameBoardsResponse>>({});
     const [boardsLoading, setBoardsLoading] = useState(false);
@@ -131,7 +131,7 @@ export default function AdminDashboard() {
             if (g?.id) {
                 const mapped = mapGame(g);
                 setActiveGame(mapped);
-                setPicks(mapped.winning.slice(0, WIN_COUNT));
+                setPicks(mapped.winning.slice(0, WIN_COUNT)); // preload any draft
             } else {
                 setActiveGame(null);
                 setPicks([]);
@@ -200,22 +200,14 @@ export default function AdminDashboard() {
             return sortDesc ? kb.localeCompare(ka) : ka.localeCompare(kb);
         });
     }, [activeGame, closedGames, sortDesc]);
-
-    const thisWeekGame = useMemo(() => {
-        return (
-            combinedGames.find(g => {
-                const wy = toWeekYear(g.week_start);
-                return wy.week === currentWeek && wy.year === currentYear;
-            }) ?? null
-        );
-    }, [combinedGames, currentWeek, currentYear]);
-
+    
+    const targetGame = activeGame && activeGame.status === "active" ? activeGame : null;
+    const hasActive = !!targetGame;
+    const canPublish = hasActive && picks.length === WIN_COUNT;
+    
     useEffect(() => {
-        setPicks((thisWeekGame?.winning ?? []).slice(0, WIN_COUNT));
-    }, [thisWeekGame?.id]);
-
-    const hasActive = !!activeGame && activeGame.status === "active";
-    const canPublish = hasActive && picks.length === WIN_COUNT && !!thisWeekGame;
+        setPicks((targetGame?.winning ?? []).slice(0, WIN_COUNT));
+    }, [targetGame?.id]);
     
     const [saving, setSaving] = useState(false);
     const [saveErr, setSaveErr] = useState<string | null>(null);
@@ -289,25 +281,21 @@ export default function AdminDashboard() {
             );
             return;
         }
-        if (!thisWeekGame || picks.length !== WIN_COUNT) return;
+        if (!targetGame || picks.length !== WIN_COUNT) return;
 
-        const wy = toWeekYear(thisWeekGame.week_start);
+        const wy = toWeekYear(targetGame.week_start);
         const ok = confirm(`Bekræft vindertal for uge ${wy.week} · ${wy.year}: ${picks.join(", ")}`);
         if (!ok) return;
 
         try {
-            await http.post<GameDTO>("/games/publish", { gameId: thisWeekGame.id, numbers: picks });
+            await http.post<GameDTO>("/games/publish", { gameId: targetGame.id, numbers: picks });
             await Promise.all([fetchActiveGame(), fetchClosedHistory()]);
             setTab("winners");
         } catch (e: any) {
-            const msg = String(e?.message || "");
-            if (msg.includes("Aktiv uge ikke fundet")) {
-                alert("Ingen aktiv uge lige nu. Vent til den nye uge starter, så oprettes den automatisk.");
-            } else {
-                alert("Kunne ikke gemme vindertal: " + msg);
-            }
+            alert("Kunne ikke gemme vindertal: " + (e?.message ?? ""));
         }
     }
+
     // Rollback
     async function undoLast() {
         const newestClosed =
@@ -333,7 +321,7 @@ export default function AdminDashboard() {
     }
 
     function resetPicks() {
-        setPicks((thisWeekGame?.winning ?? []).slice(0, WIN_COUNT));
+        setPicks((targetGame?.winning ?? []).slice(0, WIN_COUNT));
     }
     
     async function approveTx(id: number) {
@@ -446,31 +434,34 @@ export default function AdminDashboard() {
                                                                 <div>Pris</div>
                                                                 <div>Vinder</div>
                                                             </div>
-                                                            {rows.map(b => (
-                                                                <div className="admin-trow" key={b.id}>
-                                                                    <div>{b.id}</div>
-                                                                    <div>{b.playerName}</div>
-                                                                    <div>
-                                                                        <div className="wins" style={{ gap: 6 }}>
-                                                                            {pickArray<number>(b.numbers).map(n => (
-                                                                                <span
-                                                                                    key={n}
-                                                                                    className={`win-ball ${nums.includes(n) ? "" : "win-ball--muted"}`}
-                                                                                    title={nums.includes(n) ? "Match" : ""}
-                                                                                >
-                                          {n}
-                                        </span>
-                                                                            ))}
+                                                            {rows.map(b => {
+                                                                const winNums = nums;
+                                                                return (
+                                                                    <div className="admin-trow" key={b.id}>
+                                                                        <div>{b.id}</div>
+                                                                        <div>{b.playerName}</div>
+                                                                        <div>
+                                                                            <div className="wins" style={{ gap: 6 }}>
+                                                                                {pickArray<number>(b.numbers).map(n => (
+                                                                                    <span
+                                                                                        key={n}
+                                                                                        className={`win-ball ${winNums.includes(n) ? "" : "win-ball--muted"}`}
+                                                                                        title={winNums.includes(n) ? "Match" : ""}
+                                                                                    >
+                                            {n}
+                                          </span>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                        <div>{b.priceDkk} DKK</div>
+                                                                        <div>
+                                      <span className={`chip ${b.isWinner ? "chip--ok" : "chip--muted"}`}>
+                                        {b.isWinner ? "Vinder" : "–"}
+                                      </span>
                                                                         </div>
                                                                     </div>
-                                                                    <div>{b.priceDkk} DKK</div>
-                                                                    <div>
-                                    <span className={`chip ${b.isWinner ? "chip--ok" : "chip--muted"}`}>
-                                      {b.isWinner ? "Vinder" : "–"}
-                                    </span>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
+                                                                );
+                                                            })}
                                                             {rows.length === 0 && (
                                                                 <div className="admin-trow"><div>Ingen brætter.</div></div>
                                                             )}
@@ -564,7 +555,10 @@ export default function AdminDashboard() {
                             <div className="admin-row__left">
                 <span className="admin-muted">
                   {hasActive
-                      ? `Vælg ${WIN_COUNT} vindertal for uge ${currentWeek} · ${currentYear}`
+                      ? (() => {
+                          const wy = toWeekYear(targetGame!.week_start);
+                          return `Vælg ${WIN_COUNT} vindertal for uge ${wy.week} · ${wy.year}`;
+                      })()
                       : "Ingen aktiv uge — den oprettes automatisk efter sidste udtræk."}
                 </span>
                             </div>

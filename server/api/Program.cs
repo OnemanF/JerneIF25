@@ -36,6 +36,8 @@ public static class Program
         services.AddSingleton(TimeProvider.System);
         
         services.AddMyDbContext();
+        
+        services.AddScoped<api.Services.IGamesService, api.Services.GamesService>();
 
         services.AddControllers().AddJsonOptions(opts =>
         {

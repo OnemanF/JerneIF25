@@ -38,9 +38,13 @@ public sealed class Startup
 
         services.AddSingleton<TimeProvider>(new FakeTimeProvider(
             new DateTimeOffset(2025, 12, 15, 9, 0, 0, TimeSpan.Zero)));
-
-        services.AddScoped<TestDataFactory>();
         
-        services.AddScoped<IGamesService, GamesService>();
+        
+        services.AddScoped<api.Services.IGamesService, api.Services.GamesService>();
+        services.AddScoped<IPlayersService, PlayersService>();
+        services.AddScoped<api.Services.IBoardsService, api.Services.BoardsService>();
+        services.AddScoped<api.Services.IAuthService, api.Services.AuthService>(); 
+        services.AddScoped<api.Services.ISubscriptionsService, api.Services.SubscriptionsService>();
+        services.AddScoped<api.Services.ITransactionsService, api.Services.TransactionsService>();
     }
 }

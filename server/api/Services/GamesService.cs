@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using JerneIF25.DataAccess.Entities;
+﻿using JerneIF25.DataAccess.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace api.Services;
@@ -64,6 +60,33 @@ public sealed class GamesService : IGamesService
         return existing;
     }
 
+    public async Task<games> StartAsync(DateOnly? weekStart)
+    {
+        var active = await _db.games.FirstOrDefaultAsync(g => g.status == "active" && !g.is_deleted);
+        if (active is not null)
+        {
+            active.status = "inactive";
+            active.updated_at = DateTime.UtcNow;
+        }
+
+        var ws = weekStart ?? Etc.TimeAndCalendar.IsoWeekStartLocal(_tp.GetUtcNow());
+        var g = await _db.games.FirstOrDefaultAsync(x => x.week_start == ws && !x.is_deleted);
+
+        if (g is null)
+        {
+            g = new games { week_start = ws, status = "active", created_at = DateTime.UtcNow };
+            _db.games.Add(g);
+        }
+        else
+        {
+            g.status = "active";
+            g.updated_at = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync();
+        return g;
+    }
+
     public async Task<(games Closed, games Next)> PublishAsync(long gameId, int[] numbers)
     {
         if (numbers is null || numbers.Length != 3) throw new ArgumentException("Præcis 3 tal kræves.");
@@ -74,21 +97,24 @@ public sealed class GamesService : IGamesService
         if (g is null) throw new InvalidOperationException("Aktiv uge ikke fundet.");
 
         g.winning_nums = numbers.Select(n => (short)n).ToList();
-        g.status = "closed";
+        g.status       = "closed";
         g.published_at = DateTime.UtcNow;
-        g.updated_at = DateTime.UtcNow;
-
+        g.updated_at   = DateTime.UtcNow;
+        
         var nextWs = NextWeek(g.week_start);
-        var next = await _db.games.FirstOrDefaultAsync(x => x.week_start == nextWs && !x.is_deleted);
+        var nextAny = await _db.games.FirstOrDefaultAsync(x => x.week_start == nextWs);
 
-        if (next is null)
+        games next;
+        if (nextAny is null)
         {
-            next = new games { week_start = nextWs, status = "active", created_at = DateTime.UtcNow };
+            next = new games { week_start = nextWs, status = "active", created_at = DateTime.UtcNow, is_deleted = false };
             _db.games.Add(next);
         }
         else
         {
-            next.status = "active";
+            next = nextAny;
+            next.is_deleted = false;
+            next.status     = "active";
             next.updated_at = DateTime.UtcNow;
         }
 
@@ -108,7 +134,7 @@ public sealed class GamesService : IGamesService
         if (g.status != "active") throw new InvalidOperationException("Kun aktiv uge kan få udkast.");
 
         g.winning_nums = numbers.Select(n => (short)n).ToList();
-        g.updated_at = DateTime.UtcNow;
+        g.updated_at   = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         return g;
     }
@@ -120,13 +146,13 @@ public sealed class GamesService : IGamesService
         var closed = closedGameId.HasValue
             ? await _db.games.FirstOrDefaultAsync(g => g.id == closedGameId && !g.is_deleted && g.status == "closed")
             : await _db.games.Where(g => !g.is_deleted && g.status == "closed")
-                .OrderByDescending(g => g.week_start)
-                .FirstOrDefaultAsync();
+                             .OrderByDescending(g => g.week_start)
+                             .FirstOrDefaultAsync();
 
         if (closed is null) throw new InvalidOperationException("Ingen lukket uge at fortryde.");
 
         var nextWs = NextWeek(closed.week_start);
-        var next = await _db.games.FirstOrDefaultAsync(g => g.week_start == nextWs && !g.is_deleted);
+        var next = await _db.games.FirstOrDefaultAsync(g => g.week_start == nextWs);
 
         if (next is not null && await _db.boards.AnyAsync(b => !b.is_deleted && b.game_id == next.id))
             throw new InvalidOperationException("Næste uge har allerede køb – fortryd ikke muligt.");
@@ -137,21 +163,22 @@ public sealed class GamesService : IGamesService
         {
             if (next is not null && currentActive.id == next.id)
             {
-                next.is_deleted = true;
+                next.is_deleted = false;
+                next.status     = "inactive";
                 next.updated_at = DateTime.UtcNow;
             }
             else
             {
-                currentActive.status = "inactive";
+                currentActive.status   = "inactive";
                 currentActive.updated_at = DateTime.UtcNow;
             }
             await _db.SaveChangesAsync();
         }
 
-        closed.status = "active";
+        closed.status       = "active";
         closed.published_at = null;
         closed.winning_nums = null;
-        closed.updated_at = DateTime.UtcNow;
+        closed.updated_at   = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
         await tx.CommitAsync();

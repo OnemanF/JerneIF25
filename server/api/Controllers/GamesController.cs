@@ -2,7 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using JerneIF25.DataAccess.Entities;
-using api.Etc;
+using api.DTOs.Games;
+using api.Services;
 
 namespace api.Controllers;
 
@@ -11,19 +12,20 @@ namespace api.Controllers;
 public class GamesController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
-    private readonly TimeProvider _tp;
+    private readonly IGamesService _svc;
 
-    public GamesController(ApplicationDbContext db, TimeProvider tp)
+    public GamesController(ApplicationDbContext db, IGamesService svc)
     {
-        _db = db;
-        _tp = tp;
+        _db  = db;
+        _svc = svc;
     }
-    
-    private static DateOnly NextWeek(DateOnly weekStart) => weekStart.AddDays(7);
+
+    private static GameResponse Map(games g) =>
+        new(g.id, g.week_start, g.status, g.winning_nums);
     
     [HttpGet]
     [Authorize(Roles = "admin")]
-    public async Task<IActionResult> List([FromQuery] string? status)
+    public async Task<ActionResult<IEnumerable<GameListRowDto>>> List([FromQuery] string? status)
     {
         var q = _db.games.AsNoTracking().Where(g => !g.is_deleted);
 
@@ -40,32 +42,24 @@ public class GamesController : ControllerBase
 
         var rows = await q
             .OrderByDescending(g => g.week_start)
-            .Select(g => new
-            {
-                id = g.id,
-                week_start = g.week_start,
-                status = g.status,
-                winning = g.winning_nums,
-                revenueDkk = _db.boards
+            .Select(g => new GameListRowDto(
+                g.id,
+                g.week_start,
+                g.status,
+                g.winning_nums,
+                _db.boards
                     .Where(b => !b.is_deleted && b.game_id == g.id)
                     .Select(b => (decimal?)b.price_dkk)
                     .Sum() ?? 0m
-            })
+            ))
             .ToListAsync();
 
         return Ok(rows);
     }
     
-    public sealed record BoardRowDto(
-        long Id, long PlayerId, string PlayerName, decimal PriceDkk, short[] Numbers, bool IsWinner
-    );
-    public sealed record GameBoardsResponse(
-        long GameId, int WinnersTotal, int BoardsTotal, IEnumerable<BoardRowDto> Boards
-    );
-    
     [HttpGet("{id:long}/boards")]
     [Authorize(Roles = "admin")]
-    public async Task<IActionResult> BoardsForGame(long id)
+    public async Task<ActionResult<GameBoardsResponse>> BoardsForGame(long id)
     {
         var g = await _db.games.AsNoTracking().FirstOrDefaultAsync(x => x.id == id && !x.is_deleted);
         if (g is null) return NotFound("Uge ikke fundet.");
@@ -96,21 +90,13 @@ public class GamesController : ControllerBase
             IsWinner(r.Numbers ?? new List<short>())
         )).ToList();
 
-        var resp = new GameBoardsResponse(
-            id,
-            mapped.Count(x => x.IsWinner),
-            mapped.Count,
-            mapped
-        );
-
+        var resp = new GameBoardsResponse(id, mapped.Count(x => x.IsWinner), mapped.Count, mapped);
         return Ok(resp);
     }
-
-    public sealed record GameSummaryDto(long Id, int WinnersTotal, int BoardsTotal);
     
     [HttpGet("{id:long}/summary")]
     [Authorize(Roles = "admin")]
-    public async Task<IActionResult> Summary(long id)
+    public async Task<ActionResult<GameSummaryDto>> Summary(long id)
     {
         var g = await _db.games.AsNoTracking().FirstOrDefaultAsync(x => x.id == id && !x.is_deleted);
         if (g is null) return NotFound();
@@ -122,212 +108,63 @@ public class GamesController : ControllerBase
             .Select(b => new { b.numbers })
             .ToListAsync();
 
-        int winners = boards.Count(b =>
-            win.Length == 3 && win.All(n => (b.numbers ?? new List<short>()).Contains(n)));
+        int winners = boards.Count(b => win.Length == 3 && win.All(n => (b.numbers ?? new List<short>()).Contains(n)));
 
         return Ok(new GameSummaryDto(id, winners, boards.Count));
     }
     
     [HttpGet("active")]
     [AllowAnonymous]
-    public async Task<IActionResult> Active()
+    public async Task<ActionResult<GameResponse>> Active()
     {
-        var active = await _db.games.AsNoTracking()
-            .FirstOrDefaultAsync(g => g.status == "active" && !g.is_deleted);
-
-        if (active is not null) return Ok(active);
-
-        var ws = TimeAndCalendar.IsoWeekStartLocal(_tp.GetUtcNow());
-        var existing = await _db.games.FirstOrDefaultAsync(g => g.week_start == ws && !g.is_deleted);
-
-        if (existing is null)
-        {
-            var ng = new games
-            {
-                week_start = ws,
-                status     = "active",
-                created_at = DateTime.UtcNow
-            };
-            _db.games.Add(ng);
-            await _db.SaveChangesAsync();
-            return Ok(ng);
-        }
-
-        if (existing.status != "active")
-        {
-            existing.status     = "active";
-            existing.updated_at = DateTime.UtcNow;
-            await _db.SaveChangesAsync();
-        }
-
-        return Ok(existing);
+        var g = await _svc.GetActiveAsync();
+        if (g is null) return NotFound();
+        return Ok(Map(g));
     }
-
-    public sealed record StartGameDto(DateOnly? WeekStart);
     
     [HttpPost("start")]
     [Authorize(Roles = "admin")]
-    public async Task<IActionResult> Start([FromBody] StartGameDto dto)
+    public async Task<ActionResult<GameResponse>> Start([FromBody] StartGameRequest dto)
     {
-        var active = await _db.games.FirstOrDefaultAsync(g => g.status == "active" && !g.is_deleted);
-        if (active is not null)
-        {
-            active.status = "inactive";
-            active.updated_at = DateTime.UtcNow;
-        }
-
-        var ws = dto.WeekStart ?? TimeAndCalendar.IsoWeekStartLocal(_tp.GetUtcNow());
-
-        var g = await _db.games.FirstOrDefaultAsync(x => x.week_start == ws && !x.is_deleted);
-        if (g is null)
-        {
-            g = new games
-            {
-                week_start = ws,
-                status     = "active",
-                created_at = DateTime.UtcNow
-            };
-            _db.games.Add(g);
-        }
-        else
-        {
-            g.status = "active";
-            g.updated_at = DateTime.UtcNow;
-        }
-
-        await _db.SaveChangesAsync();
-        return Ok(g);
+        var g = await _svc.StartAsync(dto.WeekStart);
+        return Ok(Map(g));
     }
-
-    public sealed record PublishWinningNumbersDto(long GameId, int[] Numbers);
     
     [HttpPost("publish")]
     [Authorize(Roles = "admin")]
-    public async Task<IActionResult> Publish([FromBody] PublishWinningNumbersDto dto)
+    public async Task<ActionResult<GameResponse>> Publish([FromBody] PublishWinningNumbersRequest dto)
     {
-        if (dto.Numbers is null || dto.Numbers.Length != 3) return BadRequest("Præcis 3 tal kræves.");
-        if (dto.Numbers.Any(n => n < 1 || n > 16)) return BadRequest("Tal skal være 1..16.");
-        if (dto.Numbers.Distinct().Count() != 3) return BadRequest("Tal skal være unikke.");
-
-        var g = await _db.games.FirstOrDefaultAsync(x =>
-            x.id == dto.GameId && x.status == "active" && !x.is_deleted);
-
-        if (g is null) return BadRequest("Aktiv uge ikke fundet.");
-
-        g.winning_nums = dto.Numbers.Select(n => (short)n).ToList();
-        g.status       = "closed";
-        g.published_at = DateTime.UtcNow;
-        g.updated_at   = DateTime.UtcNow;
-        
-        var nextWs = NextWeek(g.week_start);
-        var nextAny = await _db.games.FirstOrDefaultAsync(x => x.week_start == nextWs);
-
-        if (nextAny is null)
+        try
         {
-            nextAny = new games
-            {
-                week_start = nextWs,
-                status     = "active",
-                created_at = DateTime.UtcNow,
-                is_deleted = false
-            };
-            _db.games.Add(nextAny);
+            var (closed, _) = await _svc.PublishAsync(dto.GameId, dto.Numbers);
+            return Ok(Map(closed));
         }
-        else
-        {
-            nextAny.is_deleted = false;
-            nextAny.status     = "active";
-            nextAny.updated_at = DateTime.UtcNow;
-        }
-
-        await _db.SaveChangesAsync();
-
-        return Ok(new
-        {
-            id = g.id,
-            week_start = g.week_start,
-            status = g.status,
-            winning = g.winning_nums
-        });
+        catch (ArgumentException ex)        { return BadRequest(ex.Message); }
+        catch (InvalidOperationException ex){ return BadRequest(ex.Message); }
     }
-    
-    public sealed record SaveDraftDto(long GameId, int[] Numbers);
     
     [HttpPost("draft")]
     [Authorize(Roles = "admin")]
-    public async Task<IActionResult> SaveDraft([FromBody] SaveDraftDto dto)
+    public async Task<ActionResult<GameResponse>> SaveDraft([FromBody] SaveDraftRequest dto)
     {
-        if (dto.Numbers is null || dto.Numbers.Length != 3) return BadRequest("Præcis 3 tal kræves.");
-        if (dto.Numbers.Any(n => n < 1 || n > 16)) return BadRequest("Tal skal være 1..16.");
-        if (dto.Numbers.Distinct().Count() != 3) return BadRequest("Tal skal være unikke.");
-
-        var g = await _db.games.FirstOrDefaultAsync(x => x.id == dto.GameId && !x.is_deleted);
-        if (g is null) return NotFound("Uge ikke fundet.");
-        if (g.status == "closed") return BadRequest("Kan ikke gemme på lukket uge.");
-        if (g.status != "active") return BadRequest("Kun aktiv uge kan få udkast.");
-
-        g.winning_nums = dto.Numbers.Select(n => (short)n).ToList();
-        g.updated_at   = DateTime.UtcNow;
-
-        await _db.SaveChangesAsync();
-        return Ok(new { id = g.id, week_start = g.week_start, status = g.status, winning = g.winning_nums });
+        try
+        {
+            var g = await _svc.DraftAsync(dto.GameId, dto.Numbers);
+            return Ok(Map(g));
+        }
+        catch (ArgumentException ex)        { return BadRequest(ex.Message); }
+        catch (InvalidOperationException ex){ return BadRequest(ex.Message); }
     }
-    
-    public sealed record UndoRequest(long? ClosedGameId);
     
     [HttpPost("undo")]
     [Authorize(Roles = "admin")]
-    public async Task<IActionResult> Undo([FromBody] UndoRequest req)
+    public async Task<ActionResult<GameResponse>> Undo([FromBody] UndoRequest req)
     {
-        await using var tx = await _db.Database.BeginTransactionAsync();
-        
-        var closed = req.ClosedGameId.HasValue
-            ? await _db.games.FirstOrDefaultAsync(g => g.id == req.ClosedGameId && !g.is_deleted && g.status == "closed")
-            : await _db.games.Where(g => !g.is_deleted && g.status == "closed")
-                             .OrderByDescending(g => g.week_start)
-                             .FirstOrDefaultAsync();
-
-        if (closed is null) return BadRequest("Ingen lukket uge at fortryde.");
-        
-        var nextWs = NextWeek(closed.week_start);
-        var next = await _db.games.FirstOrDefaultAsync(g => g.week_start == nextWs);
-        
-        if (next is not null && await _db.boards.AnyAsync(b => !b.is_deleted && b.game_id == next.id))
-            return BadRequest("Næste uge har allerede køb – fortryd ikke muligt.");
-        
-        var currentActive = await _db.games.FirstOrDefaultAsync(g => g.status == "active" && !g.is_deleted);
-        
-        if (currentActive is not null)
+        try
         {
-            if (next is not null && currentActive.id == next.id)
-            {
-                next.is_deleted = false;
-                next.status     = "inactive";
-                next.updated_at = DateTime.UtcNow;
-            }
-            else
-            {
-                currentActive.status = "inactive";
-                currentActive.updated_at = DateTime.UtcNow;
-            }
-
-            await _db.SaveChangesAsync();
+            var g = await _svc.UndoAsync(req.ClosedGameId);
+            return Ok(Map(g));
         }
-        
-        closed.status       = "active";
-        closed.published_at = null;
-        closed.winning_nums = null; 
-        closed.updated_at   = DateTime.UtcNow;
-
-        await _db.SaveChangesAsync();
-        await tx.CommitAsync();
-
-        return Ok(new
-        {
-            id = closed.id,
-            week_start = closed.week_start,
-            status = closed.status,
-            winning = closed.winning_nums
-        });
+        catch (InvalidOperationException ex){ return BadRequest(ex.Message); }
     }
 }

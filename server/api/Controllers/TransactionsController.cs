@@ -1,9 +1,11 @@
-﻿using JerneIF25.DataAccess.Entities;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sieve.Models;
 using Sieve.Services;
+using JerneIF25.DataAccess.Entities;
+using api.DTOs.Transactions;
+using api.Services;
 
 namespace api.Controllers;
 
@@ -13,16 +15,15 @@ public class TransactionsController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
     private readonly ISieveProcessor _sieve;
+    private readonly ITransactionsService _svc;
 
-    public TransactionsController(ApplicationDbContext db, ISieveProcessor sieve)
+    public TransactionsController(ApplicationDbContext db, ISieveProcessor sieve, ITransactionsService svc)
     {
         _db = db;
         _sieve = sieve;
+        _svc = svc;
     }
-
-    public sealed record CreateTransactionDto(long PlayerId, decimal AmountDkk, string? MobilePayRef, string? Note);
-    public sealed record DecideTransactionDto(long TransactionId, string Decision);
-
+    
     [HttpGet]
     [Authorize(Roles = "admin")]
     public async Task<IActionResult> Get([FromQuery] SieveModel sieve)
@@ -34,56 +35,47 @@ public class TransactionsController : ControllerBase
 
     [HttpPost]
     [Authorize] 
-    public async Task<IActionResult> Create([FromBody] CreateTransactionDto dto)
+    public async Task<IActionResult> Create([FromBody] CreateTransactionRequest dto)
     {
-        if (dto.AmountDkk <= 0) return BadRequest("Amount must be positive.");
-        var playerExists = await _db.players.AnyAsync(p => p.id == dto.PlayerId && !p.is_deleted);
-        if (!playerExists) return BadRequest("Player not found.");
-
-        var tx = new transactions
+        try
         {
-            player_id = dto.PlayerId,
-            amount_dkk = dto.AmountDkk,
-            mobilepay_ref = dto.MobilePayRef,
-            note = dto.Note,
-            status = "pending",
-            requested_at = DateTime.UtcNow,
-            created_at = DateTime.UtcNow
-        };
-        _db.transactions.Add(tx);
-        await _db.SaveChangesAsync();
-        return Ok(tx);
+            var res = await _svc.CreateAsync(dto);
+            return Ok(res);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     [HttpPost("decide")]
     [Authorize(Roles = "admin")]
-    public async Task<IActionResult> Decide([FromBody] DecideTransactionDto dto)
+    public async Task<IActionResult> Decide([FromBody] DecideTransactionRequest dto)
     {
-        var tx = await _db.transactions.FirstOrDefaultAsync(t => t.id == dto.TransactionId && !t.is_deleted);
-        if (tx is null) return NotFound();
-
-        if (dto.Decision is not ("approve" or "reject"))
-            return BadRequest("Decision must be 'approve' or 'reject'.");
-
-        tx.status = dto.Decision == "approve" ? "approved" : "rejected";
-        tx.decided_at = DateTime.UtcNow;
-        tx.updated_at = DateTime.UtcNow;
-
-        await _db.SaveChangesAsync();
-        return Ok(tx);
+        try
+        {
+            var res = await _svc.DecideAsync(dto);
+            return Ok(res);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (InvalidOperationException)
+        {
+            return NotFound();
+        }
     }
 
     [HttpGet("balance/{playerId:long}")]
+    [Authorize] 
     public async Task<IActionResult> Balance(long playerId)
     {
-        var approved = await _db.transactions
-            .Where(t => t.player_id == playerId && t.status == "approved" && !t.is_deleted)
-            .SumAsync(t => (decimal?)t.amount_dkk) ?? 0m;
-
-        var spent = await _db.boards
-            .Where(b => b.player_id == playerId && !b.is_deleted)
-            .SumAsync(b => (decimal?)b.price_dkk) ?? 0m;
-
-        return Ok(new { balance_dkk = approved - spent });
+        var res = await _svc.GetBalanceAsync(playerId);
+        return Ok(res);
     }
 }

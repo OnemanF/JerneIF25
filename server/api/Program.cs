@@ -37,7 +37,13 @@ public static class Program
         
         services.AddMyDbContext();
         
+        services.AddScoped<api.Services.IPlayersService, api.Services.PlayersService>();
         services.AddScoped<api.Services.IGamesService, api.Services.GamesService>();
+        services.AddScoped<api.Services.IBoardsService, api.Services.BoardsService>();
+        services.AddScoped<api.Services.IAuthService, api.Services.AuthService>();
+        services.AddScoped<api.Services.ISubscriptionsService, api.Services.SubscriptionsService>();
+        services.AddScoped<api.Services.ITransactionsService, api.Services.TransactionsService>();
+
 
         services.AddControllers().AddJsonOptions(opts =>
         {
